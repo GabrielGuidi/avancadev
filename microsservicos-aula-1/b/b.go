@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/joho/godotenv"
+	uuid "github.com/satori/go.uuid"
+	"github.com/streadway/amqp"
+	"github.com/wesleywillians/go-rabbitmq/queue"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,38 +14,64 @@ import (
 
 type Result struct {
 	Status string
-	Value string
+}
+
+type Order struct {
+	ID       uuid.UUID
+	Coupon   string
+	CcNumber string
+}
+
+func NewOrder() Order {
+	return Order{ID: uuid.NewV4()}
+}
+
+const (
+	InvalidCoupon   = "invalid"
+	ValidCoupon     = "valid"
+	ConnectionError = "connection error"
+)
+
+func init() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
 }
 
 func main() {
-	http.HandleFunc("/", home)
-	http.ListenAndServe(":9091", nil)
+	messageChannel := make(chan amqp.Delivery)
+
+	rabbitMQ := queue.NewRabbitMQ()
+	ch := rabbitMQ.Connect()
+	defer ch.Close()
+
+	rabbitMQ.Consume(messageChannel)
+
+	for msg := range messageChannel {
+		process(msg)
+	}
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	coupon := r.PostFormValue("coupon")
-	ccNumber := r.PostFormValue("ccNumber")
+func process(msg amqp.Delivery) {
 
-	resultCoupon := makeHttpCall("http://localhost:9092", coupon)
+	order := NewOrder()
+	json.Unmarshal(msg.Body, &order)
 
-	result := Result{Status: "declined", Value: resultCoupon.Value}
+	resultCoupon := makeHttpCall("http://localhost:9092", order.Coupon)
 
-	if ccNumber == "1" {
-		result.Status = "approved"
+	switch resultCoupon.Status {
+	case InvalidCoupon:
+		log.Println("Order: ", order.ID, ": invalid coupon!")
+
+	case ConnectionError:
+		msg.Reject(false)
+		log.Println("Order: ", order.ID, ": could not process!")
+	
+	case ValidCoupon:
+		log.Println("Order: ", order.ID, ": Processed")
 	}
-
-	if resultCoupon.Status == "invalid" {
-		result.Status = "invalid coupon"
-	}
-
-	jsonData, err := json.Marshal(result)
-	if err != nil {
-		log.Fatal("Error processing json")
-	}
-
-	fmt.Fprintf(w, string(jsonData))
 }
-
 
 func makeHttpCall(urlMicroservice string, coupon string) Result {
 
@@ -51,7 +80,7 @@ func makeHttpCall(urlMicroservice string, coupon string) Result {
 
 	res, err := http.PostForm(urlMicroservice, values)
 	if err != nil {
-		result := Result{Status: "Servidor fora do ar!"}
+		result := Result{Status: ConnectionError}
 		return result
 	}
 

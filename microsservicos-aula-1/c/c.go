@@ -48,9 +48,9 @@ func main() {
 func home(w http.ResponseWriter, r *http.Request) {
 	coupon := r.PostFormValue("coupon")
 	valid := coupons.Check(coupon)
-
-	resultDiscount := makeHttpCall("http://localhost:9093", coupon)
-
+	
+	resultDiscount := makeHTTPCall("http://localhost:9093", coupon)
+	
 	result := Result{Status: valid, Value: resultDiscount.Value}
 
 	jsonResult, err := json.Marshal(result)
@@ -59,9 +59,10 @@ func home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, string(jsonResult))
+
 }
 
-func makeHttpCall(urlMicroservice string, coupon string) Result {
+func makeHTTPCall(urlMicroservice string, coupon string) Result {
 
 	values := url.Values{}
 	values.Add("coupon", coupon)
