@@ -1,14 +1,15 @@
 # Avancadev
 
 ## Desafio 2
-![GitHub Logo](/assets/Filas.png)
+#### Filas configuradas no RabbitMQ:
+![GitHub filas](/microsservicos-aula-1/assets/Filas.png)
 
 #### Situação com todos os microserviços rodando:
 ###### Cupom válido
-![GitHub Logo](/assets/CupomValido.png)
+![GitHub situação A](/microsservicos-aula-1/assets/CupomValido.png)
 
 ###### Cupom inválido
-![GitHub Logo](/assets/CupomInvalido.png)
+![GitHub situação B](/microsservicos-aula-1/assets/CupomInvalido.png)
 
 #### Situação com todos o microserviço 'C' fora do ar por alguns segundos.
-![GitHub Logo](/assets/ConnectionError.png)
+![GitHub situação C](/microsservicos-aula-1/assets/ConnectionError.png)
